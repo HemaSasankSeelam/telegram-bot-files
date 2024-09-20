@@ -9,13 +9,13 @@ from configparser import ConfigParser
 
 class TELEGRAMBOT:
     def __init__(self):
-        self.api = "7016185247:AAGb0gu8zdfTeFssyufqTyF2NuPQSz0yfbs"
+        self.api = "" # your API key
         self.lms_url = "https://lms.kluniversity.in/login/index.php"
 
         r = telegram.request.HTTPXRequest(connection_pool_size=1_000, pool_timeout=10_000)
         self.bot = telegram.Bot(token = self.api, request=r)
 
-        self.files_folder = Path(r"E:\IV year odd semister")
+        self.files_folder = Path("") # your files and folders path
         self.offset = None
 
         self.config = ConfigParser()
