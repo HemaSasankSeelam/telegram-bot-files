@@ -257,6 +257,7 @@ class TELEGRAMBOT:
             
             else:
                 chat_id = data.message.chat.id
+                message_sent = None # default message sent is None
                 message_sent = data.message.text.lower()
                 full_name = data.message.chat.username
 
