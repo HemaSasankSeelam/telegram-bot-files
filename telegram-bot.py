@@ -68,15 +68,16 @@ class TELEGRAMBOT:
                     user_name = data.message.from_user.username
                     callback_data = None
                 
-                if not self.config.has_section(section=str(user_id)):
-                    self.config.add_section(section=str(user_id))
-                    self.config[str(user_id)] = {"last_update_id":str(last_update_id), "my_dict":'{}',
-                                                 "my_dict_path":'{}', "current_path":"None",
-                                                 "user_name":str(user_name), "last_chat_date":str(self.current_date)}
-                    
-                    self.update_config_file(mode='a')
-                
                 if self.offset != last_update_id:
+
+                    if not self.config.has_section(section=str(user_id)):
+                        self.config.add_section(section=str(user_id))
+                        self.config[str(user_id)] = {"last_update_id":str(last_update_id), "my_dict":'{}',
+                                                     "my_dict_path":'{}', "current_path":"None",
+                                                     "user_name":str(user_name), "last_chat_date":str(self.current_date)}
+                        
+                        self.update_config_file(mode='a')
+                        
                     
                     self.config.set(section=str(user_id), option="last_update_id", value=str(last_update_id))
                     self.config.set(section=str(user_id), option="last_chat_date", value=str(self.current_date_time.strftime("%Y-%m-%d")))
