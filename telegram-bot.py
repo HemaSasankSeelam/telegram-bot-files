@@ -9,13 +9,13 @@ from configparser import ConfigParser
 
 class TELEGRAMBOT:
     def __init__(self):
-        self.api = "" # your API key
+        self.api = "" # you'r api key
         self.lms_url = "https://lms.kluniversity.in/login/index.php"
 
         r = telegram.request.HTTPXRequest(connection_pool_size=1_000, pool_timeout=10_000)
         self.bot = telegram.Bot(token = self.api, request=r)
 
-        self.files_folder = Path("") # your files and folders path
+        self.files_folder = Path("") # your folder path
         self.offset = None
 
         self.config = ConfigParser()
@@ -38,7 +38,7 @@ class TELEGRAMBOT:
         self.is_wake_up_time_completed = False
         self.current_date = str((datetime.datetime.now() + datetime.timedelta(days=0,hours=2,minutes=30)).date())
 
-        self.max_days_idle = 20
+        self.max_days_idle = 10
 
     async def update_my_bot(self):
         try:
@@ -53,12 +53,12 @@ class TELEGRAMBOT:
     
             tasks = []
             for data in data_list:
-                
                 try:
                     callback_data = data.callback_query.data
                     user_id = str(data.callback_query.from_user.id)
                     last_update_id = data.update_id
                     user_name = data.callback_query.from_user.username
+                    first_name = data.callback_query.from_user.first_name
                 except:
                     if not data.message:
                         continue
@@ -67,21 +67,24 @@ class TELEGRAMBOT:
                     last_update_id = data.update_id
                     user_name = data.message.from_user.username
                     callback_data = None
-                
+                    first_name = data.message.from_user.first_name
+                                
                 if self.offset != last_update_id:
 
                     if not self.config.has_section(section=str(user_id)):
                         self.config.add_section(section=str(user_id))
                         self.config[str(user_id)] = {"last_update_id":str(last_update_id), "my_dict":'{}',
-                                                     "my_dict_path":'{}', "current_path":"None",
-                                                     "user_name":str(user_name), "last_chat_date":str(self.current_date)}
+                                                    "my_dict_path":'{}', "current_path":"None",
+                                                    "user_name":str(user_name), "last_chat_date":str(self.current_date),
+                                                    "first_name":"None","is_notifications_enabled":"True"}
                         
                         self.update_config_file(mode='a')
-                        
+                    
                     
                     self.config.set(section=str(user_id), option="last_update_id", value=str(last_update_id))
                     self.config.set(section=str(user_id), option="last_chat_date", value=str(self.current_date_time.strftime("%Y-%m-%d")))
                     self.config.set(section=str(user_id), option="user_name", value=str(user_name)) # ever times updates user name
+                    self.config.set(section=str(user_id), option="first_name", value=str(first_name)) # ever times updates first name
                     self.update_config_file(mode='w')
 
                     self.offset = last_update_id
@@ -116,30 +119,37 @@ class TELEGRAMBOT:
                 
                 if x.days == 0 and  not self.scheduled_times_bool[i] and h == 0 and m <= 5:
                     self.scheduled_times_bool[i] = True
-                    await self.send_message_to_all_users(telegram_user_ids=list(self.config.sections()))
-                    
+                    messages = ["Time To Check Out The LMS",self.lms_url,"LogIn Now To Check Updates...","To Stop Updates Use command end"]
+                    await self.send_message_to_all_users(telegram_user_ids=list(self.config.sections()), messages=messages, error_name=" LMS ", is_informational=False)
+            
+            with open("./information.txt","r+") as f:
+                information_lines = f.read().splitlines()
+                if information_lines != []:
+                    await self.send_message_to_all_users(telegram_user_ids=list(self.config.sections()), messages=information_lines, error_name=" Information ", is_informational=True)
+
+                f.truncate(0) # remove the entire data
 
             await asyncio.sleep(1)
     
     def update_config_file(self,mode:str):
+
         with open(self.config_file_path, mode) as f:
             self.config.write(f)
 
-    async def send_message_to_all_users(self, telegram_user_ids:list):
+    async def send_message_to_all_users(self, telegram_user_ids:list, messages:list[str], error_name:str, is_informational:bool):
         
         try:
             if telegram_user_ids:
                 telegram_user_id:str = telegram_user_ids[0]
-                await self.bot.send_message(chat_id=telegram_user_id, text="Time To Check Out The LMS")
-                await self.bot.send_message(chat_id=telegram_user_id, text=self.lms_url)
-                await self.bot.send_message(chat_id=telegram_user_id, text="LogIn Now To Check Updates...")
-                await self.bot.send_message(chat_id=telegram_user_id, text="To Stop Updates Use command end")
+                if self.config.get(section=telegram_user_id, option="is_notifications_enabled") == "True" or is_informational:
+                    for message in messages:
+                        await self.bot.send_message(chat_id=telegram_user_id, text=message)
             
                 telegram_user_ids.pop(0)
-                await self.send_message_to_all_users(telegram_user_ids)
+                await self.send_message_to_all_users(telegram_user_ids=telegram_user_ids, messages=messages, error_name=error_name, is_informational=is_informational)
         except Exception as e:
             
-            msg = str(self.current_date_time) + " LMS " + str(self.config.get(section=telegram_user_id, option="user_name"))
+            msg = str(self.current_date_time) + error_name + str(self.config.get(section=telegram_user_id, option="user_name"))
             msg += "->" + str(e) + "\n"
             self.logger.info(msg=msg)
 
@@ -147,7 +157,7 @@ class TELEGRAMBOT:
             self.update_config_file(mode="w")
 
             telegram_user_ids.pop(0)
-            await self.send_message_to_all_users(telegram_user_ids)
+            await self.send_message_to_all_users(telegram_user_ids=telegram_user_ids, messages=messages, error_name=error_name, is_informational=is_informational)
     
     async def send_wake_up_message_to_all_users(self, telegram_user_ids:list):
         try:
@@ -158,15 +168,23 @@ class TELEGRAMBOT:
                 y2,m2,d2 = map(int,self.current_date.split("-"))
 
                 if (datetime.datetime(year=y2,month=m2,day=d2) - datetime.datetime(year=y1,month=m1,day=d1)).days >= self.max_days_idle:
-                    await self.bot.send_message(chat_id=telegram_user_id, text=f"Scince You chat a long back on {self.config.get(section=telegram_user_id, option="last_chat_date")}")
-                    await self.bot.send_message(chat_id=telegram_user_id, text="From now onward's no update will come")
+                    await self.bot.send_message(chat_id=telegram_user_id, text=f"Since You chat a long back on {self.config.get(section=telegram_user_id, option="last_chat_date")}")
+                    await self.bot.send_message(chat_id=telegram_user_id, text="From now onward's no update's will come")
                     await self.bot.send_message(chat_id=telegram_user_id, text="To Again Get Updates use Command start")
                     self.config.remove_section(section=telegram_user_id)
                     self.update_config_file(mode="w")
 
                 else:
-                    await self.bot.send_message(chat_id=telegram_user_id, text=f"Good Morning {self.config.get(section=telegram_user_id, option="user_name")}")
-                    await self.bot.send_message(chat_id=telegram_user_id, text="Hurry! Time To Wake Up It's 6:00 AM")
+                    if self.config.get(section=telegram_user_id, option="is_notifications_enabled") == "True":
+                        user_name_saved_in_file = self.config.get(section=telegram_user_id, option="user_name")
+                        if user_name_saved_in_file == "None":
+                            first_name_saved_in_file = self.config.get(section=telegram_user_id, option="first_name")
+                            await self.bot.send_message(chat_id=telegram_user_id, text=f"Good Morning {first_name_saved_in_file}")
+                            await self.bot.send_message(chat_id=telegram_user_id, text="Hurry! Time To Wake Up It's 6:00 AM")
+                            await self.bot.send_message(chat_id=telegram_user_id, text="You'r username is set None please update your username")
+                        else:
+                            await self.bot.send_message(chat_id=telegram_user_id, text=f"Good Morning {user_name_saved_in_file}")
+                            await self.bot.send_message(chat_id=telegram_user_id, text="Hurry! Time To Wake Up It's 6:00 AM")
 
                 telegram_user_ids.pop(0)
                 await self.send_wake_up_message_to_all_users(telegram_user_ids)
@@ -273,6 +291,9 @@ class TELEGRAMBOT:
         
         elif message_sent in ("/start","start","st"):
             mark_up = self.get_files_in_folder(path=self.files_folder, telegram_user_id=telegram_user_id)
+
+            self.config.set(section=telegram_user_id, option="is_notifications_enabled", value="True")
+            self.update_config_file(mode="w")
  
             await self.bot.send_message(chat_id=chat_id, text="Navigation Menu", reply_markup=mark_up)
 
@@ -281,7 +302,7 @@ class TELEGRAMBOT:
             await self.bot.send_message(chat_id=chat_id, text="Bye!")
             await self.bot.send_message(chat_id=chat_id, text="To Again Get Updates use Command start")
 
-            self.config.remove_section(section=str(telegram_user_id))
+            self.config.set(section=telegram_user_id, option="is_notifications_enabled", value="False")
             self.update_config_file(mode="w")
 
             return
