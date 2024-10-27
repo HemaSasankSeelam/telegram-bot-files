@@ -36,7 +36,7 @@ class TELEGRAMBOT:
         self.scheduled_times = ["18:06:08","20:06:08","22:06:15"]
         self.scheduled_times_bool = [False,False,False]
         self.is_wake_up_time_completed = False
-        self.current_date = str((datetime.datetime.now() + datetime.timedelta(days=0,hours=2,minutes=30)).date())
+        self.current_date = str((datetime.datetime.now() + datetime.timedelta(days=0,hours=3,minutes=30)).date())
 
         self.max_days_idle = 10
 
@@ -49,7 +49,7 @@ class TELEGRAMBOT:
     async def main(self):
         while True:
             data_list = await self.update_my_bot()
-            self.current_date_time = (datetime.datetime.now() + datetime.timedelta(days=0,hours=2,minutes=30))
+            self.current_date_time = (datetime.datetime.now() + datetime.timedelta(days=0,hours=3,minutes=30))
     
             tasks = []
             for data in data_list:
