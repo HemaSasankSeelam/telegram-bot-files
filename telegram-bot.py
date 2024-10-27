@@ -303,6 +303,9 @@ class TELEGRAMBOT:
             await self.bot.send_message(chat_id=chat_id, text="To Again Get Updates use Command start")
 
             self.config.set(section=telegram_user_id, option="is_notifications_enabled", value="False")
+            self.config.set(section=telegram_user_id, option="my_dict", value="{}")
+            self.config.set(section=telegram_user_id, option="my_dict_path", value="{}")
+            self.config.set(section=telegram_user_id, option="current_path", value="None")
             self.update_config_file(mode="w")
 
             return
